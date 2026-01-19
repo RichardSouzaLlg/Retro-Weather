@@ -1,0 +1,237 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Retro-Weather Synth | Full System</title>
+    <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Rajdhani:wght@500;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            /* Variáveis Dinâmicas - Alteradas pelo JS */
+            --neon-pink: #ff00ff;
+            --neon-blue: #00ffff;
+            --bg-dark: #050505;
+            --grid-color: rgba(0, 255, 255, 0.2);
+            --sun-color: linear-gradient(#ff0080, #ff8c00 80%);
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            background-color: var(--bg-dark);
+            color: white;
+            font-family: 'Rajdhani', sans-serif;
+            overflow: hidden;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            transition: background 2s ease, color 2s ease;
+        }
+
+        /* Grade 80s com perspectiva */
+        .grid-background {
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background-image: 
+                linear-gradient(var(--grid-color) 1px, transparent 1px),
+                linear-gradient(90deg, var(--grid-color) 1px, transparent 1px);
+            background-size: 50px 50px;
+            transform: perspective(500px) rotateX(60deg);
+            transform-origin: center top;
+            animation: moveGrid 2s linear infinite;
+            z-index: -1;
+            transition: 2s ease;
+        }
+
+        @keyframes moveGrid { from { background-position: 0 0; } to { background-position: 0 50px; } }
+
+        /* Sol Retrô Reativo */
+        .retro-sun {
+            position: fixed;
+            bottom: 15%;
+            width: 350px; height: 350px;
+            background: var(--sun-color);
+            border-radius: 50%;
+            filter: blur(2px);
+            z-index: -2;
+            transition: all 2s ease;
+        }
+
+        /* Dashboard de Vidro */
+        .dashboard {
+            background: rgba(0, 0, 0, 0.85);
+            border: 2px solid var(--neon-blue);
+            padding: 30px;
+            border-radius: 5px;
+            text-align: center;
+            box-shadow: 0 0 25px var(--neon-blue);
+            backdrop-filter: blur(10px);
+            width: 380px;
+            transition: 2s ease;
+        }
+
+        /* Busca */
+        .search-box {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 25px;
+        }
+
+        input {
+            flex: 1;
+            background: transparent;
+            border: 1px solid var(--neon-blue);
+            padding: 10px;
+            color: white;
+            font-family: 'Rajdhani', sans-serif;
+            outline: none;
+            transition: 0.3s;
+        }
+
+        input:focus { box-shadow: 0 0 10px var(--neon-blue); }
+
+        .search-btn {
+            background: var(--neon-blue);
+            border: none;
+            color: black;
+            padding: 0 15px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: 0.3s;
+        }
+
+        .city { text-transform: uppercase; letter-spacing: 6px; font-weight: 700; color: white; }
+        .temp { font-size: 5.5rem; font-weight: 700; color: var(--neon-blue); text-shadow: 0 0 15px var(--neon-blue); line-height: 1; margin: 15px 0; transition: 2s ease; }
+        .condition { font-style: italic; color: var(--neon-pink); margin-bottom: 30px; letter-spacing: 2px; transition: 2s ease; }
+
+        .btn-audio {
+            background: transparent;
+            border: 2px solid var(--neon-pink);
+            color: var(--neon-pink);
+            padding: 12px 24px;
+            cursor: pointer;
+            font-family: 'Press Start 2P', cursive;
+            font-size: 0.5rem;
+            width: 100%;
+            transition: 0.3s;
+        }
+
+        .btn-audio:hover { background: var(--neon-pink); color: black; box-shadow: 0 0 15px var(--neon-pink); }
+
+        /* Efeito Visual de Chuva/Nuvens */
+        body.rainy { background-color: #020b1a; }
+        body.cloudy { background-color: #1a1a1a; }
+
+    </style>
+</head>
+<body>
+
+    <div class="grid-background"></div>
+    <div class="retro-sun" id="sun"></div>
+
+    <div class="dashboard">
+        <div class="search-box">
+            <input type="text" id="cityInput" placeholder="CIDADE...">
+            <button class="search-btn" onclick="fetchWeather()">OK</button>
+        </div>
+
+        <div class="city" id="cityName">READY</div>
+        <div class="temp" id="temp">--°</div>
+        <div class="condition" id="condition">WEATHER SYSTEM</div>
+        
+        <button class="btn-audio" onclick="playAtmosphere()">PLAY SYNTH ATMOSPHERE</button>
+    </div>
+
+    <script>
+        const API_KEY = '6c9f0b8e84b194c79bbfc922767ee999'; // <--- INSIRA SEU TOKEN AQUI
+
+        async function fetchWeather() {
+            const city = document.getElementById('cityInput').value || 'Porto Alegre';
+            const url = `https://api.openweathermap.org/data/2.5/weather?q=${city}&appid=${API_KEY}&units=metric&lang=pt_br`;
+
+            try {
+                const response = await fetch(url);
+                if (!response.ok) throw new Error('Cidade não encontrada');
+                const data = await response.json();
+                updateUI(data);
+            } catch (error) {
+                alert(error.message);
+            }
+        }
+
+        function updateUI(data) {
+            const temp = Math.round(data.main.temp);
+            const main = data.weather[0].main;
+            const sun = document.getElementById('sun');
+            const body = document.body;
+
+            document.getElementById('temp').innerText = `${temp}°`;
+            document.getElementById('cityName').innerText = data.name;
+            document.getElementById('condition').innerText = data.weather[0].description.toUpperCase();
+
+            // 1. Reset e Clima (Chuva/Nuvens)
+            body.className = ''; 
+            if (main === 'Rain' || main === 'Drizzle') body.classList.add('rainy');
+            if (main === 'Clouds') body.classList.add('cloudy');
+
+            // 2. Lógica de Cores por Temperatura (Termocrômica)
+            if (temp <= 15) {
+                // MODO FRIO (Gelo/Ciano)
+                body.style.setProperty('--neon-pink', '#00d4ff');
+                body.style.setProperty('--neon-blue', '#ffffff');
+                body.style.setProperty('--grid-color', 'rgba(0, 212, 255, 0.3)');
+                body.style.setProperty('--sun-color', 'linear-gradient(#0051ff, #00d4ff)');
+                sun.style.boxShadow = "0 0 60px #0051ff";
+            } 
+            else if (temp > 15 && temp <= 28) {
+                // MODO NEUTRO (Classic Synthwave)
+                body.style.setProperty('--neon-pink', '#ff00ff');
+                body.style.setProperty('--neon-blue', '#00ffff');
+                body.style.setProperty('--grid-color', 'rgba(0, 255, 255, 0.2)');
+                body.style.setProperty('--sun-color', 'linear-gradient(#ff0080, #ff8c00 80%)');
+                sun.style.boxShadow = "0 0 60px #ff00ff";
+            } 
+            else {
+                // MODO CALOR (Redline/Outrun)
+                body.style.setProperty('--neon-pink', '#ff4e00');
+                body.style.setProperty('--neon-blue', '#ffee00');
+                body.style.setProperty('--grid-color', 'rgba(255, 78, 0, 0.3)');
+                body.style.setProperty('--sun-color', 'linear-gradient(#ff0000, #ffae00)');
+                sun.style.boxShadow = "0 0 80px #ff4e00";
+            }
+        }
+
+        // Enter Key para buscar
+        document.getElementById('cityInput').addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') fetchWeather();
+        });
+
+        // Web Audio API - Sintetizador Adaptativo
+        let audioCtx;
+        function playAtmosphere() {
+            if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+            const osc = audioCtx.createOscillator();
+            const gain = audioCtx.createGain();
+            
+            const tempVal = parseInt(document.getElementById('temp').innerText) || 20;
+            const freq = 110 + (tempVal * 2); // Frequência muda com o clima
+            
+            osc.type = 'sawtooth';
+            osc.frequency.setValueAtTime(freq, audioCtx.currentTime);
+            osc.frequency.exponentialRampToValueAtTime(freq / 2, audioCtx.currentTime + 2.5);
+            
+            gain.gain.setValueAtTime(0.1, audioCtx.currentTime);
+            gain.gain.exponentialRampToValueAtTime(0.0001, audioCtx.currentTime + 2.5);
+            
+            osc.connect(gain);
+            gain.connect(audioCtx.destination);
+            osc.start();
+            osc.stop(audioCtx.currentTime + 2.5);
+        }
+
+        // Executa busca inicial
+        fetchWeather();
+    </script>
+</body>
+</html>
